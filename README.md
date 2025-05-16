@@ -1,61 +1,88 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Каталог товаров - API проект на Laravel
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Описание проекта
+Этот проект представляет собой API для каталога товаров с гибкой системой фильтрации по свойствам. API позволяет получать список товаров с применением различных фильтров, сортировки и пагинации.
 
-## About Laravel
+## Технический стек
+- **Laravel**: версия 12.0
+- **PHP**: версия 8.2
+- **MySQL**: версия 8.0
+- **Docker**: с использованием Laravel Sail
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Настройка Docker
+Проект использует Laravel Sail для Docker-контейнеризации. Конфигурация контейнеров определена в стандартном файле `docker-compose.yml`.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Порты
+- **Laravel**: 80
+- **MySQL**: 33060 (проброс на хост-машину)
+- **phpMyAdmin**: 8080 (проброс на хост-машину)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Настройка базы данных
+- **Основная БД**: MySQL 8.0
+- **База данных**: product_catalog
+- **Пользователь**: sail
+- **Пароль**: password
 
-## Learning Laravel
+Для тестирования используется отдельная база данных `testing`, настроенная в `phpunit.xml`.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Модели
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### Product (`app/Models/Product.php`)
+- Представляет товары в каталоге
+- Поля: `id`, `name`, `price`, `quantity`, `created_at`, `updated_at`
+- Связь many-to-many с `PropertyValue` через промежуточную таблицу
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Property (`app/Models/Property.php`)
+- Представляет типы свойств товаров (цвет, размер, материал и т.д.)
+- Поля: `id`, `name`, `created_at`, `updated_at`
+- Связь one-to-many с `PropertyValue`
 
-## Laravel Sponsors
+### PropertyValue (`app/Models/PropertyValue.php`)
+- Представляет конкретные значения свойств (красный, XL, хлопок и т.д.)
+- Поля: `id`, `property_id`, `value`, `created_at`, `updated_at`
+- Связи: belongs-to с `Property`, many-to-many с `Product`
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### ProductPropertyValue (`app/Models/ProductPropertyValue.php`)
+- Промежуточная модель для связи many-to-many между `Product` и `PropertyValue`
+- Поля: `id`, `product_id`, `property_value_id`
+- Связи: belongs-to с `Product` и `PropertyValue`
 
-### Premium Partners
+## Репозитории
+Для абстракции работы с данными реализован паттерн Repository:
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### RepositoryInterface (`app/Repositories/RepositoryInterface.php`)
+- Определяет интерфейс для всех репозиториев
+- Методы: `all()`, `find()`, `create()`, `update()`, `delete()`
 
-## Contributing
+### ProductRepository (`app/Repositories/ProductRepository.php`)
+- Реализует методы для работы с моделью `Product`
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### PropertyRepository (`app/Repositories/PropertyRepository.php`)
+- Реализует методы для работы с моделью `Property`
+- Включает специальный метод `findByName` для поиска свойств по имени
 
-## Code of Conduct
+### PropertyValueRepository (`app/Repositories/PropertyValueRepository.php`)
+- Реализует методы для работы с моделью `PropertyValue`
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Сервисы
 
-## Security Vulnerabilities
+### ProductCatalogService (`app/Services/ProductCatalogService.php`)
+- Инкапсулирует бизнес-логику работы с каталогом товаров
+- Методы:
+  - `getFilteredProducts` - получение товаров с фильтрацией и пагинацией
+  - `createFilteredQuery` - создание запроса с фильтрами
+  - `addPropertyFilter` - добавление фильтра по свойству
+  - `applyPagination` - применение пагинации
+  - `formatProducts` - форматирование данных о товарах
+  - `createPaginationInfo` - формирование информации о пагинации
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Контроллеры
 
-## License
+### ProductController (`app/Http/Controllers/API/ProductController.php`)
+- Обрабатывает API-запросы к каталогу товаров
+- Метод `index` для получения списка товаров с фильтрацией
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## API-маршруты
+API-маршруты определены в файле `routes/api.php`:
+```php
+Route::get('/products', [ProductController::class, 'index']);
